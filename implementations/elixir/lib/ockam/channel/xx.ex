@@ -208,6 +208,7 @@ defmodule Ockam.Channel.XX do
   end
 
   def split(%__MODULE__{vault: vault, ck: ck}) do
-    Vault.hkdf_sha256(vault, ck, nil, 2)
+    {:ok, outputs} = Vault.hkdf_sha256(vault, ck, nil, 2)
+    {:ok, Enum.reverse(outputs)}
   end
 end
