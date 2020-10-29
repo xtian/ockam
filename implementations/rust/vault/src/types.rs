@@ -15,6 +15,8 @@ pub enum SecretKeyType {
     Curve25519,
     /// NIST P-256 (secp256r1, prime256v1) secret key
     P256,
+    /// ChainKey
+    ChainKey,
 }
 
 impl SecretKeyType {
@@ -26,6 +28,7 @@ impl SecretKeyType {
             SecretKeyType::Aes256 => 2,
             SecretKeyType::Curve25519 => 3,
             SecretKeyType::P256 => 4,
+            SecretKeyType::ChainKey => 5,
         }
     }
 
@@ -37,6 +40,7 @@ impl SecretKeyType {
             2 => Ok(SecretKeyType::Aes256),
             3 => Ok(SecretKeyType::Curve25519),
             4 => Ok(SecretKeyType::P256),
+            5 => Ok(SecretKeyType::ChainKey),
             _ => Err(VaultFailErrorKind::InvalidParam(0).into()),
         }
     }
@@ -117,6 +121,8 @@ try_from_int_impl!(SecretPersistenceType, u128);
 pub enum SecretPurposeType {
     /// Key exchange
     KeyAgreement,
+    /// Epilogue
+    Epilogue,
 }
 
 impl SecretPurposeType {
@@ -124,6 +130,7 @@ impl SecretPurposeType {
     pub fn to_usize(&self) -> usize {
         match *self {
             SecretPurposeType::KeyAgreement => 0,
+            SecretPurposeType::Epilogue => 1,
         }
     }
 
@@ -131,6 +138,7 @@ impl SecretPurposeType {
     pub fn from_usize(value: usize) -> Result<Self, VaultFailError> {
         match value {
             0 => Ok(SecretPurposeType::KeyAgreement),
+            1 => Ok(SecretPurposeType::Epilogue),
             _ => Err(VaultFailErrorKind::InvalidParam(0).into()),
         }
     }
@@ -212,6 +220,8 @@ pub enum SecretKey {
     Curve25519([u8; 32]),
     /// NIST P-256 (secp256r1, prime256v1) secret key
     P256([u8; 32]),
+    /// ChainKey
+    ChainKey([u8; 32]),
 }
 
 impl SecretKey {
@@ -223,6 +233,7 @@ impl SecretKey {
             SecretKeyType::Aes256 => SecretKey::Aes256(*array_ref![data.as_ref(), 0, 32]),
             SecretKeyType::P256 => SecretKey::P256(*array_ref![data.as_ref(), 0, 32]),
             SecretKeyType::Curve25519 => SecretKey::Curve25519(*array_ref![data.as_ref(), 0, 32]),
+            SecretKeyType::ChainKey => SecretKey::ChainKey(*array_ref![data.as_ref(), 0, 32]),
         }
     }
 }
@@ -235,6 +246,7 @@ impl AsRef<[u8]> for SecretKey {
             SecretKey::Aes256(a) => a.as_ref(),
             SecretKey::Curve25519(a) => a.as_ref(),
             SecretKey::P256(a) => a.as_ref(),
+            SecretKey::ChainKey(a) => a.as_ref(),
         }
     }
 }
@@ -248,6 +260,7 @@ impl PartialEq for SecretKey {
             (Aes256(a), Aes256(b)) => a.as_ref().ct_eq(b.as_ref()).unwrap_u8() == 1u8,
             (Curve25519(a), Curve25519(b)) => a.as_ref().ct_eq(b.as_ref()).unwrap_u8() == 1u8,
             (P256(a), P256(b)) => a.as_ref().ct_eq(b.as_ref()).unwrap_u8() == 1u8,
+            (ChainKey(a), ChainKey(b)) => a.as_ref().ct_eq(b.as_ref()).unwrap_u8() == 1u8,
             (_, _) => false,
         }
     }
@@ -264,6 +277,7 @@ impl Zeroize for SecretKey {
             Aes256(ref mut a) => a.zeroize(),
             Curve25519(ref mut a) => a.zeroize(),
             P256(ref mut a) => a.zeroize(),
+            ChainKey(ref mut a) => a.zeroize(),
         }
     }
 }
