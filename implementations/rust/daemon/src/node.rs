@@ -14,10 +14,17 @@ use ockam_message::message::AddressType;
 use ockam_router::router::Router;
 use ockam_system::commands::{OckamCommand, RouterCommand};
 use ockam_transport::transport::UdpTransport;
-use ockam_vault::c::Atecc608aVaultBuilder;
 use ockam_vault::software::DefaultVaultSecret;
 use ockam_vault::types::*;
 use ockam_vault::{file::FilesystemVault, DynVault, Secret};
+use cfg_if::cfg_if;
+
+cfg_if! {
+    if #[cfg(feature = "atecc608a")] {
+        use ockam_vault::c::Atecc608aVaultBuilder;
+        use ockam_vault::c::CVault;
+    }
+}
 
 #[allow(dead_code)]
 pub struct Node<'a> {
@@ -32,6 +39,17 @@ pub struct Node<'a> {
 }
 
 impl<'a> Node<'a> {
+    #[cfg(feature = "atecc608a")]
+    fn create_atecc_vault() -> CVault {
+        let builder = Atecc608aVaultBuilder::default();
+        builder.build().expect("failed to initialize atecc vault")
+    }
+
+    #[cfg(not(feature = "atecc608a"))]
+    fn create_atecc_vault() -> FilesystemVault {
+        panic!("No atecc support")
+    }
+
     pub fn new(config: &'a Config) -> (Self, Sender<OckamCommand>) {
         // TODO: temporarily passed into the node, need to re-work
         let (router_tx, router_rx) = std::sync::mpsc::channel();
@@ -69,13 +87,12 @@ impl<'a> Node<'a> {
                     (resp_key_ctx, Arc::new(Mutex::new(v)))
                 }
                 VaultKind::Atecc => {
-                    let builder = Atecc608aVaultBuilder::default();
+                    let vault = Node::create_atecc_vault();
+
                     // TODO: Prepare identity key in ATECC
                     (
                         None,
-                        Arc::new(Mutex::new(
-                            builder.build().expect("failed to initialize atecc vault"),
-                        )),
+                        Arc::new(Mutex::new(vault)),
                     )
                 }
             };
