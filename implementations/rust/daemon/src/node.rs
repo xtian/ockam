@@ -125,7 +125,7 @@ impl<'a> Node<'a> {
             // if responder, generate keypair and display static public key
             if matches!(config.role(), Role::Sink) || matches!(config.role(), Role::Router) {
                 let attributes = SecretKeyAttributes {
-                    xtype: SecretKeyType::Curve25519,
+                    xtype: config.cipher_suite().get_secret_key_type(),
                     purpose: SecretPurposeType::KeyAgreement,
                     persistence: SecretPersistenceType::Persistent,
                 };
@@ -161,11 +161,8 @@ impl<'a> Node<'a> {
         // create the channel manager
         type XXChannelManager = ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>;
         let (channel_tx, channel_rx) = mpsc::channel();
-        let new_key_exchanger = XXNewKeyExchanger::new(
-            CipherSuite::Curve25519AesGcmSha256,
-            vault.clone(),
-            vault.clone(),
-        );
+        let new_key_exchanger =
+            XXNewKeyExchanger::new(config.cipher_suite(), vault.clone(), vault.clone());
 
         let chan_manager = XXChannelManager::new(
             channel_rx,

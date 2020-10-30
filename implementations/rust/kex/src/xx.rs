@@ -52,17 +52,11 @@ impl std::fmt::Debug for SymmetricState {
 
 impl SymmetricState {
     fn get_secret_key_type(&self) -> SecretKeyType {
-        match self.cipher_suite {
-            CipherSuite::Curve25519AesGcmSha256 => SecretKeyType::Curve25519,
-            CipherSuite::P256Aes128GcmSha256 => SecretKeyType::P256,
-        }
+        self.cipher_suite.get_secret_key_type()
     }
 
     fn get_symmetric_key_type(&self) -> SecretKeyType {
-        match self.cipher_suite {
-            CipherSuite::Curve25519AesGcmSha256 => SecretKeyType::Aes256,
-            CipherSuite::P256Aes128GcmSha256 => SecretKeyType::Aes128,
-        }
+        self.cipher_suite.get_symmetric_key_type()
     }
 
     fn create_public_key(&self, public_key: &[u8]) -> Result<PublicKey, VaultFailError> {
