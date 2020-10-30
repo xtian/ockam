@@ -413,7 +413,10 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             .send(Router(RouterCommand::SendMessage(m)))
             .unwrap();
         let completed_key_exchange = agreement.finalize()?;
-        let static_public_key = completed_key_exchange.remote_static_public_key.as_ref().to_vec();
+        let static_public_key = completed_key_exchange
+            .remote_static_public_key
+            .as_ref()
+            .to_vec();
         channel.completed_key_exchange = Some(completed_key_exchange);
         channel.route = return_route;
 

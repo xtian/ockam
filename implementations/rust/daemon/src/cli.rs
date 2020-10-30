@@ -4,6 +4,7 @@ use std::str::FromStr;
 
 use ockam_message::message::{Route, RouterAddress};
 
+use ockam_kex::CipherSuite;
 use structopt::{clap::ArgSettings::Hidden, StructOpt};
 use url::Url;
 
@@ -119,6 +120,14 @@ pub struct Args {
         set = Hidden,
     )]
     control_port: u16,
+
+    #[structopt(
+        short = "s",
+        long,
+        default_value = "Curve25519AesGcmSha256",
+        help = "Cipher suite"
+    )]
+    cipher_suite: CipherSuite,
 }
 
 impl Default for Args {
@@ -137,6 +146,7 @@ impl Default for Args {
             identity_name: format!("1{}", FILENAME_KEY_SUFFIX),
             service_public_key: None,
             addon: None,
+            cipher_suite: CipherSuite::Curve25519AesGcmSha256,
         }
     }
 }
@@ -191,6 +201,10 @@ impl Args {
 
     pub fn addon(&self) -> Option<Addon> {
         self.addon.clone()
+    }
+
+    pub fn cipher_suite(&self) -> CipherSuite {
+        self.cipher_suite.clone()
     }
 }
 

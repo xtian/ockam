@@ -8,17 +8,14 @@ use crate::config::{Config, Role};
 use crate::worker::Worker;
 
 use ockam_channel::*;
-use ockam_kex::{
-    xx::{XXInitiator, XXNewKeyExchanger, XXResponder},
-    CipherSuite,
-};
+use ockam_kex::xx::{XXInitiator, XXNewKeyExchanger, XXResponder};
 use ockam_message::message::AddressType;
 use ockam_router::router::Router;
 use ockam_system::commands::{OckamCommand, RouterCommand};
 use ockam_transport::transport::UdpTransport;
+use ockam_vault::software::DefaultVaultSecret;
 use ockam_vault::types::*;
 use ockam_vault::{file::FilesystemVault, DynVault, Secret};
-use ockam_vault::software::DefaultVaultSecret;
 
 #[allow(dead_code)]
 pub struct Node<'a> {
@@ -48,23 +45,25 @@ impl<'a> Node<'a> {
             // if responder, generate keypair and display static public key
             if matches!(config.role(), Role::Responder) {
                 let attributes = SecretKeyAttributes {
-                    xtype: SecretKeyType::Curve25519,
+                    xtype: config.cipher_suite().get_secret_key_type(),
                     purpose: SecretPurposeType::KeyAgreement,
                     persistence: SecretPersistenceType::Persistent,
                 };
-                Some(Arc::new(vault
+                Some(Arc::new(
+                    vault
                         .secret_generate(attributes)
-                        .expect("failed to generate secret")))
-            }
-            else {
+                        .expect("failed to generate secret"),
+                ))
+            } else {
                 None
             }
         } else {
-            Some(Arc::new(as_key_ctx(&config.identity_name()).expect("invalid identity name provided")))
+            Some(Arc::new(
+                as_key_ctx(&config.identity_name()).expect("invalid identity name provided"),
+            ))
         };
 
         if matches!(config.role(), Role::Responder) && resp_key_ctx.is_some() {
-
             if let Ok(resp_key) = vault.secret_public_key_get(resp_key_ctx.as_ref().unwrap()) {
                 println!("Responder public key: {}", hex::encode(resp_key));
             }
@@ -76,11 +75,8 @@ impl<'a> Node<'a> {
         // create the channel manager
         type XXChannelManager = ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>;
         let (channel_tx, channel_rx) = mpsc::channel();
-        let new_key_exchanger = XXNewKeyExchanger::new(
-            CipherSuite::Curve25519AesGcmSha256,
-            vault.clone(),
-            vault.clone(),
-        );
+        let new_key_exchanger =
+            XXNewKeyExchanger::new(config.cipher_suite(), vault.clone(), vault.clone());
 
         let chan_manager = XXChannelManager::new(
             channel_rx,
