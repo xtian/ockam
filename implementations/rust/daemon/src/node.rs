@@ -7,12 +7,14 @@ use crate::cli;
 use crate::config::{Config, Role};
 use crate::worker::Worker;
 
+use crate::cli::VaultKind;
 use ockam_channel::*;
 use ockam_kex::xx::{XXInitiator, XXNewKeyExchanger, XXResponder};
 use ockam_message::message::AddressType;
 use ockam_router::router::Router;
 use ockam_system::commands::{OckamCommand, RouterCommand};
 use ockam_transport::transport::UdpTransport;
+use ockam_vault::c::Atecc608aVaultBuilder;
 use ockam_vault::software::DefaultVaultSecret;
 use ockam_vault::types::*;
 use ockam_vault::{file::FilesystemVault, DynVault, Secret};
@@ -35,42 +37,55 @@ impl<'a> Node<'a> {
         let (router_tx, router_rx) = std::sync::mpsc::channel();
         let router = Router::new(router_rx);
 
-        // create the vault, using the FILESYSTEM implementation
-        let mut vault =
-            FilesystemVault::new(config.vault_path()).expect("failed to initialize vault");
-
-        // check for re-use of provided identity name from CLI args, if not in on-disk in vault
-        // generate a new one to be used
-        let resp_key_ctx = if !contains_key(&mut vault, &config.identity_name()) {
-            // if responder, generate keypair and display static public key
-            if matches!(config.role(), Role::Responder) {
-                let attributes = SecretKeyAttributes {
-                    xtype: config.cipher_suite().get_secret_key_type(),
-                    purpose: SecretPurposeType::KeyAgreement,
-                    persistence: SecretPersistenceType::Persistent,
-                };
-                Some(Arc::new(
-                    vault
-                        .secret_generate(attributes)
-                        .expect("failed to generate secret"),
-                ))
-            } else {
-                None
-            }
-        } else {
-            Some(Arc::new(
-                as_key_ctx(&config.identity_name()).expect("invalid identity name provided"),
-            ))
-        };
+        let (resp_key_ctx, vault): (Option<Arc<Box<dyn Secret>>>, Arc<Mutex<dyn DynVault>>) =
+            match config.vault_kind() {
+                // create the vault, using the FILESYSTEM implementation
+                VaultKind::Filesystem => {
+                    let mut v = FilesystemVault::new(config.vault_path())
+                        .expect("failed to initialize filesystem vault");
+                    // check for re-use of provided identity name from CLI args, if not in on-disk in vault
+                    // generate a new one to be used
+                    let resp_key_ctx = if !contains_key(&mut v, &config.identity_name()) {
+                        // if responder, generate keypair and display static public key
+                        if matches!(config.role(), Role::Responder) {
+                            let attributes = SecretKeyAttributes {
+                                xtype: config.cipher_suite().get_secret_key_type(),
+                                purpose: SecretPurposeType::KeyAgreement,
+                                persistence: SecretPersistenceType::Persistent,
+                            };
+                            Some(Arc::new(
+                                v.secret_generate(attributes)
+                                    .expect("failed to generate secret"),
+                            ))
+                        } else {
+                            None
+                        }
+                    } else {
+                        Some(Arc::new(
+                            as_key_ctx(&config.identity_name())
+                                .expect("invalid identity name provided"),
+                        ))
+                    };
+                    (resp_key_ctx, Arc::new(Mutex::new(v)))
+                }
+                VaultKind::Atecc => {
+                    let builder = Atecc608aVaultBuilder::default();
+                    // TODO: Prepare identity key in ATECC
+                    (
+                        None,
+                        Arc::new(Mutex::new(
+                            builder.build().expect("failed to initialize atecc vault"),
+                        )),
+                    )
+                }
+            };
 
         if matches!(config.role(), Role::Responder) && resp_key_ctx.is_some() {
+            let mut vault = vault.lock().unwrap();
             if let Ok(resp_key) = vault.secret_public_key_get(resp_key_ctx.as_ref().unwrap()) {
                 println!("Responder public key: {}", hex::encode(resp_key));
             }
         }
-
-        // prepare the vault for use in key exchanger and channel manager
-        let vault = Arc::new(Mutex::new(vault));
 
         // create the channel manager
         type XXChannelManager = ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>;
@@ -167,7 +182,7 @@ fn as_key_ctx(key_name: &str) -> Result<Box<dyn Secret>, String> {
     Err("invalid key name format".into())
 }
 
-fn contains_key(v: &mut dyn DynVault, key_name: &str) -> bool {
+fn contains_key(v: &mut FilesystemVault, key_name: &str) -> bool {
     if let Ok(ctx) = as_key_ctx(key_name) {
         return v.secret_export(&ctx).is_ok();
     }
