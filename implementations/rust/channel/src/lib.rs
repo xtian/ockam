@@ -168,12 +168,8 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                 match self.channels.get_mut(&address) {
                     Some(channel) => {
                         let mut channel = channel.lock().unwrap();
-                        let agreement = match &mut channel.agreement {
-                            Some(e) => e.as_mut(),
-                            None => panic!(), // FIXME
-                        };
 
-                        if !agreement.is_complete() {
+                        if channel.agreement.is_some() {
                             debug_assert!(channel.completed_key_exchange.is_none());
                             return Ok(());
                         }
