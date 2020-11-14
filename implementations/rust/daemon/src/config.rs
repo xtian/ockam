@@ -20,6 +20,7 @@ pub enum Input {
 #[derive(Debug, Clone)]
 pub enum AddonKind {
     InfluxDb(url::Url, String),
+    Kafka(SocketAddr)
 }
 
 #[derive(Debug, Clone)]
@@ -119,6 +120,10 @@ impl From<cli::Args> for Config {
             addon: if let Some(a) = args.addon() {
                 match a {
                     cli::Addon::InfluxDb(u, db) => Some(AddonKind::InfluxDb(u, db)),
+                    cli::Addon::Kafka(endpoint) => {
+                        let endpoint_addr : SocketAddr = endpoint.parse().expect(format!("invalid endpoint: {}", endpoint).as_str());
+                        Some(AddonKind::Kafka(endpoint_addr))
+                    }
                 }
             } else {
                 None

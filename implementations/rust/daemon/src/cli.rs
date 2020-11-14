@@ -223,6 +223,7 @@ impl Args {
 #[derive(Debug, Clone)]
 pub enum Addon {
     InfluxDb(Url, String),
+    Kafka(String)
 }
 
 impl FromStr for Addon {
@@ -240,6 +241,12 @@ impl FromStr for Addon {
                 } else {
                     Err("expected valid URL".into())
                 }
+            },
+            ["kafka", kafka_endpoint @ ..] => {
+                if kafka_endpoint.len() != 1 {
+                    return Err("bad configuration: kafka addon requires a host:port endpoint".into());
+                }
+                Ok(Addon::Kafka(kafka_endpoint[0].into()))
             }
             _ => Err(format!("unknown configuration: {}", s)),
         }

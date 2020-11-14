@@ -9,6 +9,7 @@ use ockam_message::message::{
 };
 use ockam_system::commands::{ChannelCommand, OckamCommand, RouterCommand, WorkerCommand};
 use std::io::Write;
+use std::net::TcpStream;
 
 type WorkFn = fn(self_worker: &SinkWorker, msg: OckamMessage);
 
@@ -56,6 +57,10 @@ impl SinkWorker {
                         }
                         Err(e) => println!("failed to send to influxdb: {}", e),
                     }
+                },
+                Some(AddonKind::Kafka(endpoint)) => {
+                    let mut stream = TcpStream::connect(endpoint).expect("Can't establish connection to Kafka Connect Source");
+                    stream.write(msg.message_body.as_ref());
                 }
                 None => {
                     let mut out = std::io::stdout();
