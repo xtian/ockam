@@ -25,6 +25,7 @@ use std::net::SocketAddr;
 use std::str::*;
 use std::sync::{Arc, Mutex};
 use std::thread;
+use ockam_channel_refactor::SecureChannel;
 
 pub struct TestWorker {
     address: String,

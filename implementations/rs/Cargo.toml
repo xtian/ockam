@@ -23,6 +23,7 @@ members = [
     "queue",
     "tcp_router",
     "worker_manager",
+    "channel_refactor",
 ]
 
 exclude = [
@@ -51,4 +52,5 @@ default-members = [
     "queue",
     "tcp_router",
     "worker_manager",
+    "channel_refactor",
 ]
