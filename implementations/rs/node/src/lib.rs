@@ -6,17 +6,25 @@ use alloc::string::String;
 use core::cell::RefCell;
 use core::ops::Deref;
 use core::time;
-use ockam::message::{AddressType, Message};
+use ockam::message::{Address, AddressType, Message};
+use ockam::vault::types::{
+    SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH,
+};
 use ockam_message_router::MessageRouter;
-use ockam_no_std_traits::{PollHandle, ProcessMessageHandle};
-use ockam_queue::Queue;
-use ockam_worker_manager::WorkerManager;
+use ockam_no_std_traits::{
+    PollHandle, ProcessMessageHandle, SecureChannelConnectCallback, WorkerRegistration,
+};
+use ockam_tcp_router::tcp_router::TcpRouter;
+use ockam_vault_software::DefaultVault;
+use std::sync::{Arc, Mutex};
 use std::thread;
 
+pub enum Transport {
+    Tcp(Rc<TcpRouter>),
+}
+
 pub struct Node {
-    message_queue: Rc<RefCell<Queue<Message>>>,
     message_router: MessageRouter,
-    worker_manager: Rc<RefCell<WorkerManager>>,
     modules_to_poll: VecDeque<PollHandle>,
     _role: String,
 }
@@ -24,44 +32,49 @@ pub struct Node {
 impl Node {
     pub fn new(role: &str) -> Result<Self, String> {
         Ok(Node {
-            message_queue: Rc::new(RefCell::new(Queue::new())),
             message_router: MessageRouter::new().unwrap(),
-            worker_manager: Rc::new(RefCell::new(WorkerManager::new())),
             modules_to_poll: VecDeque::new(),
             _role: role.to_string(),
         })
     }
 
-    pub fn initialize_transport(&mut self, listen_address: Option<&str>) -> Result<bool, String> {
-        let tcp_transport = ockam_tcp_manager::tcp_manager::TcpManager::new(listen_address)?;
-        let tcp_transport = Rc::new(RefCell::new(tcp_transport));
-        self.message_router
-            .register_address_type_handler(AddressType::Tcp, tcp_transport.clone())?;
-        self.modules_to_poll.push_back(tcp_transport);
+    pub fn create_secure_channel(
+        &mut self,
+        route: Vec<Address>,
+        callback: Rc<dyn SecureChannelConnectCallback>,
+    ) -> Result<bool, String> {
         Ok(true)
     }
 
     pub fn register_worker(
         &mut self,
-        address: String,
+        address: Address,
         message_handler: Option<ProcessMessageHandle>,
         poll_handler: Option<PollHandle>,
     ) -> Result<bool, String> {
-        let mut wm = self.worker_manager.deref().borrow_mut();
-        wm.register_worker(address, message_handler, poll_handler)
+        println!("registering {}", address.as_string());
+        if let Some(mh) = message_handler {
+            self.message_router
+                .register_message_handler(address, mh.clone());
+        }
+        if let Some(ph) = poll_handler {
+            self.modules_to_poll.push_back(ph.clone());
+        }
+        Ok(true)
     }
 
     pub fn run(&mut self) -> Result<(), String> {
-        self.message_router
-            .register_address_type_handler(AddressType::Worker, self.worker_manager.clone())?;
-        self.modules_to_poll.push_back(self.worker_manager.clone());
-
         let mut stop = false;
         loop {
-            match self.message_router.poll(self.message_queue.clone()) {
-                Ok(keep_going) => {
+            let mut new_workers: Vec<WorkerRegistration> = Vec::new();
+            let mut new_messages: Vec<Message> = Vec::new();
+            match self.message_router.poll() {
+                Ok((keep_going, _, workers_opt)) => {
                     if !keep_going {
                         break;
+                    }
+                    if let Some(mut workers) = workers_opt {
+                        new_workers.append(&mut workers);
                     }
                 }
                 Err(s) => {
@@ -71,11 +84,16 @@ impl Node {
             for p_ref in self.modules_to_poll.iter() {
                 let p = p_ref.clone();
                 let mut p = p.deref().borrow_mut();
-                match p.poll(self.message_queue.clone()) {
-                    Ok(keep_going) => {
+                match p.poll() {
+                    Ok((keep_going, messages_opt, workers_opt)) => {
                         if !keep_going {
-                            stop = true;
                             break;
+                        }
+                        if let Some(mut workers) = workers_opt {
+                            new_workers.append(&mut workers);
+                        }
+                        if let Some(mut messages) = messages_opt {
+                            new_messages.append(&mut messages)
                         }
                     }
                     Err(s) => {
@@ -86,6 +104,16 @@ impl Node {
             if stop {
                 break;
             }
+            for w in new_workers {
+                if let Some(mh) = w.message_processor {
+                    self.message_router
+                        .register_message_handler(w.address, mh.clone());
+                }
+                if let Some(p) = w.poll {
+                    self.modules_to_poll.push_back(p.clone());
+                }
+            }
+            self.message_router.enqueue_messages(new_messages);
             thread::sleep(time::Duration::from_millis(100));
         }
         Ok(())

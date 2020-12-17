@@ -15,13 +15,13 @@ members = [
     "router",
     "queue_topic",
     "transport",
-    "node",
-    "c/generate_bindings",
+#    "node", Needs to implement new vault api
+#    "c/generate_bindings",
     "c/bindings",
     "c/rust_memory",
     "message_router",
     "queue",
-    "tcp_manager",
+    "tcp_router",
     "worker_manager",
 ]
 
@@ -44,11 +44,11 @@ default-members = [
     "router",
     "queue_topic",
     "transport",
-    "node",
+#   "node", Needs to implement new vault api
     "c/bindings",
     "c/rust_memory",
     "message_router",
     "queue",
-    "tcp_manager",
+    "tcp_router",
     "worker_manager",
 ]
