@@ -1,0 +1,7 @@
+[package]
+name = "ockam"
+version = "0.0.0"
+edition = "2018"
+
+[dependencies]
+ockam_macros = {path = "../ockam_macros", version = "*"}

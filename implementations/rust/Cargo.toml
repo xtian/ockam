@@ -26,7 +26,8 @@ members = [
 ]
 
 exclude = [
-    "okta"
+    "okta",
+    "_api_prototype"
 ]
 
 default-members = [
