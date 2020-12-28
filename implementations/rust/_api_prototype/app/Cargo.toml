@@ -5,3 +5,5 @@ edition = "2018"
 
 [dependencies]
 ockam = {path = "../ockam", version = "*"}
+tokio = { version = "1", features = ["full"] }
+executor = "0.7"
