@@ -22,7 +22,6 @@ members = [
     "message_router",
     "tcp_router",
     "worker_manager",
-    "channel_refactor",
 ]
 
 exclude = [
@@ -50,5 +49,4 @@ default-members = [
     "message_router",
     "tcp_router",
     "worker_manager",
-    "channel_refactor",
 ]
