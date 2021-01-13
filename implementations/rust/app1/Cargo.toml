@@ -1,0 +1,8 @@
+[package]
+name = "app1"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+
+[dependencies]
+ockam = {path = "../ockam", version = "*", default-features = false, features = ["ockam_node_no_std"]}

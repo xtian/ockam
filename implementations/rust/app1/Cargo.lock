@@ -7,17 +7,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "739f4a8db6605981345c5654f3a85b056ce52f37a39d34da03f25bf2151ea16e"
 
 [[package]]
-name = "app"
+name = "app1"
 version = "0.1.0"
 dependencies = [
  "ockam",
 ]
 
 [[package]]
-name = "autocfg"
-version = "1.0.1"
+name = "executor"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
+checksum = "5fc386acdbd994c2c2dc45829352eaff2bfc3b3191c220e4b61d1bcc44b56191"
+dependencies = [
+ "executor-macros",
+ "lazy_static",
+ "spin",
+ "woke",
+]
+
+[[package]]
+name = "executor-macros"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76702ca666fb8b55aea1f5099cdbbdb42e50392de44ad60c86224e7d4236c401"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "hashbrown"
@@ -29,12 +46,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "lazy_static"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+dependencies = [
+ "spin",
+]
+
+[[package]]
 name = "ockam"
 version = "0.0.0"
 dependencies = [
  "hashbrown",
  "ockam_node_attribute",
- "ockam_node_tokio",
+ "ockam_node_no_std",
 ]
 
 [[package]]
@@ -46,17 +72,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "ockam_node_tokio"
+name = "ockam_node_no_std"
 version = "0.0.0"
 dependencies = [
- "tokio",
+ "executor",
 ]
-
-[[package]]
-name = "pin-project-lite"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "439697af366c49a6d0a010c56a0d97685bc140ce0d377b13a2ea2aa42d64a827"
 
 [[package]]
 name = "proc-macro2"
@@ -77,6 +97,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "spin"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
+
+[[package]]
 name = "syn"
 version = "1.0.58"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -88,17 +114,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokio"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d258221f566b6c803c7b4714abadc080172b272090cdc5e244a6d4dd13c3a6bd"
-dependencies = [
- "autocfg",
- "pin-project-lite",
-]
-
-[[package]]
 name = "unicode-xid"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
+
+[[package]]
+name = "woke"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eafdab77c9ee549298ca6585107832aa89d77b14ba13cda220fec6105b17dbb1"
