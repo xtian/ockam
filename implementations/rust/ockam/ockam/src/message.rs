@@ -1,19 +1,27 @@
 use crate::address::{Address, Addressable};
 use crate::queue::{AddressableQueue, Queue};
 use crate::route::Route;
+use crate::worker::Worker;
 use alloc::collections::VecDeque;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 use core::cell::RefCell;
 
+#[cfg(feature = "json")]
+use serde::*;
+
 pub type Payload = Vec<u8>;
 
 #[derive(Debug, Copy, Clone)]
+#[cfg(feature = "json")]
+#[derive(Serialize)]
 pub enum MessageType {
     Payload,
 }
 
 #[derive(Debug, Clone)]
+#[cfg(feature = "json")]
+#[derive(Serialize)]
 pub struct Message {
     pub message_type: MessageType,
     pub onward_route: Route,
@@ -42,6 +50,10 @@ impl Into<Message> for i32 {
     fn into(self) -> Message {
         Message::from(self.to_le_bytes().to_vec())
     }
+}
+
+pub trait OnwardTo<T> {
+    fn onward_to(&mut self, onward: T) -> &mut Self;
 }
 
 impl Message {
@@ -95,11 +107,6 @@ impl MessageBuilder {
         self
     }
 
-    pub fn onward_to(&mut self, onward: &str) -> &mut Self {
-        self.onward_route.append(Address::from(onward).into());
-        self
-    }
-
     pub fn return_route(&mut self, return_route: Route) -> &mut Self {
         self.return_route = return_route;
         self
@@ -132,21 +139,42 @@ impl MessageBuilder {
     }
 }
 
-struct MessageQueue {
+impl OnwardTo<&str> for MessageBuilder {
+    fn onward_to(&mut self, onward: &str) -> &mut Self {
+        self.onward_route.append(onward.into());
+        self
+    }
+}
+
+impl OnwardTo<String> for MessageBuilder {
+    fn onward_to(&mut self, onward: String) -> &mut Self {
+        self.onward_route.append(onward.as_str().into());
+        self
+    }
+}
+
+impl OnwardTo<Address> for MessageBuilder {
+    fn onward_to(&mut self, onward: Address) -> &mut Self {
+        self.onward_route.append(onward.into());
+        self
+    }
+}
+
+struct AddressedMessageQueue {
     address: Address,
     inner: VecDeque<Message>,
 }
 
-impl MessageQueue {
+impl AddressedMessageQueue {
     fn new(address: Address) -> Self {
-        MessageQueue {
+        AddressedMessageQueue {
             address,
             inner: VecDeque::new(),
         }
     }
 }
 
-impl Queue<Message> for MessageQueue {
+impl Queue<Message> for AddressedMessageQueue {
     fn enqueue(&mut self, element: Message) -> crate::Result<bool> {
         self.inner.enqueue(element)
     }
@@ -160,14 +188,31 @@ impl Queue<Message> for MessageQueue {
     }
 }
 
-impl Addressable for MessageQueue {
+impl Addressable for AddressedMessageQueue {
     fn address(&self) -> Address {
         self.address.clone()
     }
 }
 
-impl AddressableQueue<Message> for MessageQueue {}
+impl AddressableQueue<Message> for AddressedMessageQueue {}
 
-pub fn new_message_queue(address: Address) -> Rc<RefCell<dyn AddressableQueue<Message>>> {
-    Rc::new(RefCell::new(MessageQueue::new(address)))
+pub type MessageQueue = Rc<RefCell<dyn AddressableQueue<Message>>>;
+
+pub fn new_message_queue(address: Address) -> MessageQueue {
+    Rc::new(RefCell::new(AddressedMessageQueue::new(address)))
+}
+
+pub trait MessageDelivery {
+    fn deliver(&mut self);
+}
+
+pub struct MessageSender {}
+
+impl MessageSender {
+    pub fn send(worker: &mut Worker, message: Message) {
+        let mut mailbox = worker.inbox.borrow_mut();
+        if let Err(e) = mailbox.enqueue(message) {
+            panic!("Couldn't enqueue message: {:?}", e)
+        }
+    }
 }

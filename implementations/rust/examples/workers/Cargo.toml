@@ -5,5 +5,10 @@ authors = ["Ockam Developers"]
 edition = "2018"
 
 [dependencies]
-ockam = {path = "../../ockam/ockam", version = "*"}
+ockam = {path = "../../ockam/ockam", version = "*", features = ["json"]}
 executor = {version = "*"}
+jsonrpc-http-server = {version = "16.0.0"}
+jsonrpc-client-core = { version = "0.5.0"}
+jsonrpc-client-http = { version = "0.5.0"}
+serde = {version ="1.0"}
+serde_json = {version ="1.0"}

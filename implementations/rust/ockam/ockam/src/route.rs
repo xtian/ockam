@@ -1,7 +1,12 @@
 use crate::address::{Address, Addressable};
 use alloc::collections::VecDeque;
 
+#[cfg(feature = "json")]
+use serde::Serialize;
+
 #[derive(Debug, Clone, Eq, PartialEq)]
+#[cfg(feature = "json")]
+#[derive(Serialize)]
 pub struct RouteEntry {
     address: Address,
 }
@@ -25,6 +30,8 @@ impl Into<RouteEntry> for &str {
 }
 
 #[derive(Clone, Default, Debug, Eq, PartialEq)]
+#[cfg(feature = "json")]
+#[derive(Serialize)]
 pub struct Route {
     path: VecDeque<RouteEntry>,
 }
@@ -34,8 +41,12 @@ impl Route {
         self.path.push_back(entry);
     }
 
-    pub fn take_next(&mut self) -> Option<RouteEntry> {
+    pub fn take_front(&mut self) -> Option<RouteEntry> {
         self.path.pop_front()
+    }
+
+    pub fn front(&self) -> Option<&RouteEntry> {
+        self.path.front()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -56,7 +67,7 @@ mod test {
         route.append("printer".into());
 
         while !route.is_empty() {
-            if let Some(entry) = route.take_next() {
+            if let Some(entry) = route.take_front() {
                 assert!(!entry.address.to_string().is_empty())
             }
         }

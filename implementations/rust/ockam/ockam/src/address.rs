@@ -3,7 +3,9 @@ use alloc::string::{String, ToString};
 use core::fmt::{Display, Formatter};
 use core::hash::{Hash, Hasher};
 
-#[derive(Eq, Clone, Debug)]
+use serde::Serialize;
+
+#[derive(Eq, Clone, Debug, Serialize)]
 pub struct Address {
     inner: String,
 }
@@ -68,7 +70,7 @@ mod test {
         }
         impl Addressable for Thing {
             fn address(&self) -> Address {
-                return self.address.clone().into();
+                self.address.clone().into()
             }
         }
 
@@ -85,6 +87,10 @@ mod test {
         let mut map = hashbrown::HashMap::new();
         map.insert(thing.address(), true);
 
-        assert!(map.get(&thing.address()).unwrap());
+        let present = match map.get(&thing.address()) {
+            Some(x) => x,
+            None => panic!(),
+        };
+        assert!(present);
     }
 }

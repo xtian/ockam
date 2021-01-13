@@ -1,20 +1,24 @@
 use ockam::address::Address;
 use ockam::message::Message;
-use ockam::node::WorkerContext;
+use ockam::node::Node;
+use ockam::worker::Worker;
 
 #[ockam::node]
 pub async fn main() {
-    let message_queue = ockam::message::new_message_queue(Address::from("worker_inbox"));
+    let inbox = ockam::message::new_message_queue(Address::from("worker_inbox"));
 
-    let handler = |message: &Message, context: &mut WorkerContext| {
-        println!("Address: {}, Message: {:#?}", context.address, message);
+    let handler = |message: &Message, worker: &mut Worker| {
+        println!("Address: {}, Message: {:#?}", worker.address(), message);
     };
 
-    if let Some(address) = ockam::worker::with_closure(handler)
-        .mailbox(message_queue)
-        .address("external")
-        .start()
+    let node_handle = Node::new_handle();
+
+    if let Some(worker) = ockam::worker::with_closure(node_handle.clone(), handler)
+        .inbox(inbox)
+        .build()
     {
-        ockam::node::send(&address, "hello".into())
+        let mut node = node_handle.borrow_mut();
+        node.register(worker);
+        node.route("hello".into())
     }
 }
