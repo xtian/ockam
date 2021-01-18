@@ -1,10 +1,14 @@
 use ockam_vault::{HashVault, SecretVault, SignerVault, VerifierVault};
+use std::collections::HashMap;
 
+pub mod change_event;
 pub mod error;
 pub mod profile;
-pub mod profile_event;
-pub mod profile_event_binary_model;
 pub mod profile_manager;
+pub mod signed_change_event;
+
+pub type ProfileEventAttributes = HashMap<String, String>;
+pub type ProfileEventAdditionalData = HashMap<String, String>;
 
 pub trait ProfileVault: SecretVault + SignerVault + VerifierVault + HashVault + Send {}
 
@@ -12,8 +16,11 @@ impl<D> ProfileVault for D where D: SecretVault + SignerVault + VerifierVault + 
 
 #[cfg(test)]
 mod tests {
-    use crate::profile::profile::{ProfileEventAttributeKey, ProfileEventAttributes};
+    use crate::profile::change_event::{
+        ProfileEventAttributeKey, ProfileKeyPurpose, ProfileKeyType,
+    };
     use crate::profile::profile_manager::ProfileManager;
+    use crate::profile::ProfileEventAttributes;
     use ockam_vault_software::DefaultVault;
     use std::sync::{Arc, Mutex};
 
@@ -36,7 +43,12 @@ mod tests {
         );
 
         let mut profile = manager
-            .create_profile(Some(attributes.clone()), vault)
+            .create_profile(
+                ProfileKeyType::Main,
+                ProfileKeyPurpose::Kex,
+                Some(attributes.clone()),
+                vault,
+            )
             .unwrap();
 
         let now = chrono::offset::Utc::now().timestamp();
