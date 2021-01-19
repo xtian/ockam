@@ -1,12 +1,19 @@
+mod change;
+pub use change::*;
+
 mod identifier;
 pub use identifier::*;
 
-mod change;
-pub use change::*;
+mod permission;
+pub use permission::*;
+
+mod rule;
+pub use rule::*;
 
 #[derive(Clone, Debug)]
 pub struct Profile {
     pub identifier: ProfileIdentifier,
+    pub rules: Vec<ProfileRule>,
     pub change_history: ProfileChangeHistory,
 }
 
@@ -14,6 +21,7 @@ impl Profile {
     pub fn new() -> Self {
         Profile {
             identifier: ProfileIdentifier::new(),
+            rules: vec![],
             change_history: ProfileChangeHistory::new(),
         }
     }
